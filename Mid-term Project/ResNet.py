@@ -64,11 +64,11 @@ class BottleneckBlock(nn.Module):
 # ResNet
 class ResNet(nn.Module):
 
-    def __init__(self, block, layer):
+    def __init__(self, block, layer, num_channels=1, num_classes=10):
         super(ResNet, self).__init__()
 
         self.input = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False),
+            nn.Conv2d(num_channels, 64, kernel_size=7, stride=2, padding=3, bias=False),
             nn.BatchNorm2d(64),
             nn.ReLU(True),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -92,7 +92,7 @@ class ResNet(nn.Module):
             nn.Flatten()
         )
         self.fc = nn.Sequential(
-            nn.Linear(512 * block.factor, 2)
+            nn.Linear(512 * block.factor, num_classes)
         )
 
     def forward(self, x):
