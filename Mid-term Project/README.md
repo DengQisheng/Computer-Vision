@@ -1,6 +1,6 @@
 ## Mid-term Project
 
-**Classification on MNIST with ResNet Network**
+**Classification on MNIST with ResNet18 Network**
 
 - Member
   - Liu Yuzhe 16307110070
