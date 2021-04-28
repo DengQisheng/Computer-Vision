@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, SubsetRandomSampler
+from torch.utils.data import DataLoader, random_split
 
 from ResNet import resnet
 
@@ -26,38 +26,25 @@ def set_random_seeds(seed_value=0, device_type='cpu'):
 
 
 # Load data
-# def data_loader(root, data_size, batch_size, image_size, num_workers, train_ratio, valid_ratio):
+def data_loader(root, batch_size, num_workers, valid_size):
 
-#     transform = transforms.Compose([
-#         transforms.Resize(image_size),
-#         transforms.CenterCrop(image_size),
-#         transforms.ToTensor(),
-#         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-#     ])
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5,), (0.5,))
+    ])
 
-#     dataset = datasets.ImageFolder(root=root, transform=transform)
+    train_set = datasets.mnist.MNIST(root, transform=transform, train=True)
+    valid_set, test_set = random_split(datasets.mnist.MNIST(root, transform=transform, train=False), lengths=[valid_size, 10000 - valid_size])
 
-#     total_size = len(dataset)
-#     data_size = min(data_size, total_size)
-#     train_size = int(data_size * train_ratio)
-#     valid_size = int(data_size * valid_ratio)
+    train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    valid_loader = DataLoader(dataset=valid_set, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
-#     index = list(range(total_size))
-#     np.random.shuffle(index)
-
-#     train_sampler = SubsetRandomSampler(index[:train_size])
-#     valid_sampler = SubsetRandomSampler(index[train_size:train_size + valid_size])
-#     test_sampler = SubsetRandomSampler(index[train_size + valid_size:data_size])
-
-#     train_loader = DataLoader(dataset=dataset, batch_size=batch_size, sampler=train_sampler, num_workers=num_workers)
-#     valid_loader = DataLoader(dataset=dataset, batch_size=batch_size, sampler=valid_sampler, num_workers=num_workers)
-#     test_loader = DataLoader(dataset=dataset, batch_size=batch_size, sampler=test_sampler, num_workers=num_workers)
-
-#     return {'train': train_loader, 'valid': valid_loader, 'test': test_loader}
+    return {'train': train_loader, 'valid': valid_loader, 'test': test_loader}
 
 
 # Train
-def train(dataloader, network, criterion, optimizer, num_epochs, log_show, log_root, device):
+def train(dataloader, network, criterion, optimizer, scheduler, num_epochs, log_show, log_root, device):
 
     train_loss_history, train_acc_history = [], []
     valid_loss_history, valid_acc_history = [], []
@@ -66,13 +53,13 @@ def train(dataloader, network, criterion, optimizer, num_epochs, log_show, log_r
 
     start = time.time()
 
-    with open(f'{log_root}/train.log', 'w') as logging:
+    with open(f'{log_root}/train_{num_epochs}.log', 'w') as logging:
 
         for epoch in range(1, num_epochs + 1):
 
             # Training
             network.train()
-            batch, num_batchces = 0, len(dataloader['train'])
+            batch, num_batches = 0, len(dataloader['train'])
             train_loss, train_correct, train_total = 0.0, 0, 0
             for patch, label in dataloader['train']:
                 # Data
@@ -87,7 +74,7 @@ def train(dataloader, network, criterion, optimizer, num_epochs, log_show, log_r
                 loss.backward()
                 optimizer.step()
                 # Loss
-                train_loss += loss.item()
+                train_loss += loss.item() * patch.size(0)
                 # Accuracy
                 train_correct += torch.sum(torch.max(prediction, 1)[1] == label)
                 train_total += len(label)
@@ -95,13 +82,15 @@ def train(dataloader, network, criterion, optimizer, num_epochs, log_show, log_r
                 if batch % log_show == 0:
                     train_show_loss = train_loss / train_total
                     train_show_acc = float(train_correct) / train_total
-                    print(f'Epoch [{epoch}/{num_epochs}] | Batch [{batch}/{num_batchces}] | Train Loss: {train_show_loss:.6f} | Train Acc: {train_show_acc:.4f}')
+                    print(f'Epoch [{epoch}/{num_epochs}] | Batch [{batch}/{num_batches}] | Train Loss: {train_show_loss:.6f} | Train Acc: {train_show_acc:.4f}')
 
             train_epoch_loss = train_loss / train_total
             train_epoch_acc = float(train_correct) / train_total
             train_loss_history.append(train_epoch_loss)
             train_acc_history.append(train_epoch_acc)
             print(f'Epoch [{epoch}/{num_epochs}] | Train Loss: {train_epoch_loss:.6f} | Train Acc: {train_epoch_acc:.4f}')
+
+            scheduler.step()
 
             # Validation
             network.eval()
@@ -115,7 +104,7 @@ def train(dataloader, network, criterion, optimizer, num_epochs, log_show, log_r
                     prediction = network(patch)
                     loss = criterion(prediction, label)
                     # Loss
-                    valid_loss += loss.item()
+                    valid_loss += loss.item() * patch.size(0)
                     # Accuracy
                     valid_correct += torch.sum(torch.max(prediction, 1)[1] == label)
                     valid_total += len(label)
@@ -153,6 +142,7 @@ def train(dataloader, network, criterion, optimizer, num_epochs, log_show, log_r
 # Test
 def test(dataloader, network, device):
 
+    network.eval()
     test_correct, test_total = 0, 0
     with torch.no_grad():
         for patch, label in dataloader['test']:
@@ -171,14 +161,39 @@ def test(dataloader, network, device):
 
 
 # Save model
-def save_model(root, model, depth, data_size):
-    torch.save(model.state_dict(), f'{root}/ResNet{depth}_{data_size}.pth')
-    print(f'Model ResNet{depth}_{data_size}.pth saved!')
+def save_model(root, model, depth, num_epochs):
+    torch.save(model.state_dict(), f'{root}/ResNet{depth}_{num_epochs}.pth')
+    print(f'Model ResNet{depth}_{num_epochs}.pth saved!')
 
 
 # Visual
-def visual(root, history):
-    pass
+def visual(root, history, num_epochs):
+
+    # Loss
+    plt.figure()
+    plt.grid(ls='--')
+    plt.plot(range(1, num_epochs + 1), history['train_loss_curve'], 'b-', linewidth=1, label='Train Loss')
+    plt.plot(range(1, num_epochs + 1), history['valid_loss_curve'], 'r-', linewidth=1, label='Valid Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.xticks(list(range(0, num_epochs + 1, 10)))
+    plt.legend()
+    plt.savefig(f'{root}/loss_curve_{num_epochs}.png')
+    plt.close('all')
+    print(f'loss_curve_{num_epochs}.png saved!')
+
+    # Accuracy
+    plt.figure()
+    plt.grid(ls='--')
+    plt.plot(range(1, num_epochs + 1), history['train_acc_curve'], 'b-', linewidth=1, label='Train Acc.')
+    plt.plot(range(1, num_epochs + 1), history['valid_acc_curve'], 'r-', linewidth=1, label='Valid Acc.')
+    plt.xlabel('Epoch')
+    plt.ylabel('Acc')
+    plt.xticks(list(range(0, num_epochs + 1, 10)))
+    plt.legend()
+    plt.savefig(f'{root}/acc_curve_{num_epochs}.png')
+    plt.close('all')
+    print(f'acc_curve_{num_epochs}.png saved!')
 
 
 # Main
@@ -196,33 +211,34 @@ def main(config):
     set_random_seeds(seed_value=config.seed, device_type=device.type)
 
     # Dataset
-    # dataloader = data_loader(
-    #     root=config.data_root, data_size=config.data_size, batch_size=config.batch_size, image_size=config.image_size,
-    #     num_workers=config.num_workers, train_ratio=config.train_ratio, valid_ratio=config.valid_ratio
-    # )
-    # TODO: dataloader
-    dataloader = {'train': None, 'valid': None, 'test': None}
+    dataloader = data_loader(
+        root=config.data_root, batch_size=config.batch_size,
+        num_workers=config.num_workers, valid_size=config.valid_size
+    )
     # Network
     network = resnet(config.depth).to(device=device)
     # Criterion
     criterion = nn.CrossEntropyLoss()
     # Optimizer
     optimizer = optim.Adam(params=network.parameters(), lr=config.learning_rate, weight_decay=config.penalty)
+    # Scheduler
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=config.milestones, gamma=config.gamma)
 
     # Train
     model, history = train(
-        dataloader, network, criterion, optimizer, num_epochs=config.epoch,
+        dataloader, network, criterion, optimizer, scheduler, num_epochs=config.epoch,
         log_show=config.log_show, log_root=config.log_root, device=device
     )
     # Test
     test(dataloader, model, device=device)
 
     # Save
-    save_model(root=config.model_root, model=model, depth=config.depth, data_size=config.data_size)
+    save_model(root=config.model_root, model=model, depth=config.depth, num_epochs=config.epoch)
     # Visual
-    visual(root=config.visual_root, history=history)
+    visual(root=config.visual_root, history=history, num_epochs=config.epoch)
 
 
+# Parser
 if __name__ == '__main__':
 
     # Parser
@@ -233,25 +249,24 @@ if __name__ == '__main__':
     # Random seed
     parser.add_argument('--seed', type=int, default=2021)
     # Path
-    parser.add_argument('--data_root', type=str, default='../dataset')
+    parser.add_argument('--data_root', type=str, default='../data')
     parser.add_argument('--log_root', type=str, default='../log')
     parser.add_argument('--model_root', type=str, default='../model')
     parser.add_argument('--visual_root', type=str, default='../visual')
     # Data parameter
-    parser.add_argument('--data_size', type=int, default=70000)
     parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--image_size', type=int, default=28)
     parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument('--train_ratio', type=float, default=0.6)
-    parser.add_argument('--valid_ratio', type=float, default=0.2)
+    parser.add_argument('--valid_size', type=int, default=5000)
     # Network parameter
     parser.add_argument('--depth', type=int, default=18)
     # Optimizer parameter
-    parser.add_argument('--learning_rate', type=float, default=0.1)
-    parser.add_argument('--penalty', type=float, default=0.0001)
+    parser.add_argument('--learning_rate', type=float, default=0.005)
+    parser.add_argument('--penalty', type=float, default=0.00001)
+    parser.add_argument('--milestones', type=list, default=[10, 30, 50, 70, 90])
+    parser.add_argument('--gamma', type=float, default=0.8)
     # Training parameter
-    parser.add_argument('--epoch', type=int, default=200)
-    parser.add_argument('--log_show', type=int, default=10)
+    parser.add_argument('--epoch', type=int, default=100)
+    parser.add_argument('--log_show', type=int, default=50)
     # Configuration
     CONFIG = parser.parse_args()
 
