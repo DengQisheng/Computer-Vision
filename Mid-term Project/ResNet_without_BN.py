@@ -12,14 +12,14 @@ class BasicBlock(nn.Module):
 
         self.residual = nn.Sequential(
             nn.Conv2d(in_channels, proc_channels, kernel_size=3, stride=stride, padding=1, bias=False),
-            nn.BatchNorm2d(proc_channels),
+            # nn.BatchNorm2d(proc_channels),
             nn.ReLU(True),
             nn.Conv2d(proc_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels)
+            # nn.BatchNorm2d(out_channels)
         )
         self.identity = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, padding=0, bias=False),
-            nn.BatchNorm2d(out_channels)
+            # nn.BatchNorm2d(out_channels)
         ) if stride != 1 or in_channels != out_channels else nn.Sequential()
         self.activation = nn.ReLU(True)
 
@@ -41,17 +41,17 @@ class BottleneckBlock(nn.Module):
 
         self.residual = nn.Sequential(
             nn.Conv2d(in_channels, proc_channels, kernel_size=1, stride=1, padding=0, bias=False),
-            nn.BatchNorm2d(proc_channels),
+            # nn.BatchNorm2d(proc_channels),
             nn.ReLU(True),
             nn.Conv2d(proc_channels, proc_channels, kernel_size=3, stride=stride, padding=1, bias=False),
-            nn.BatchNorm2d(proc_channels),
+            # nn.BatchNorm2d(proc_channels),
             nn.ReLU(True),
             nn.Conv2d(proc_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False),
-            nn.BatchNorm2d(out_channels)
+            # nn.BatchNorm2d(out_channels)
         )
         self.identity = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, padding=0, bias=False),
-            nn.BatchNorm2d(out_channels)
+            # nn.BatchNorm2d(out_channels)
         ) if stride != 1 or in_channels != out_channels else nn.Sequential()
         self.activation = nn.ReLU(True)
 
@@ -69,7 +69,7 @@ class ResNet(nn.Module):
 
         self.input = nn.Sequential(
             nn.Conv2d(num_channels, 64, kernel_size=7, stride=2, padding=3, bias=False),
-            nn.BatchNorm2d(64),
+            # nn.BatchNorm2d(64),
             nn.ReLU(True),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         )
