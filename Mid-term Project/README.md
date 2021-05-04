@@ -8,15 +8,16 @@
   - Li Junbo 17300180042
 
 - Model
-  - BaiduYun links (Uploading...)
+  - Baidu Pan: https://pan.baidu.com/s/1MuZf_ZwDB2RqQ5eQ56b7iQ Code: errk
 
 - Code
 
 | File | Description |
 |:-:|:-:|
-| ResNet.py | |
-| ResNet_without_BN.py | |
-| train.py | |
-| train_lr_decay.py | |
-| train_BN.py | |
-| visual.py | |
+| ResNet.py | ResNet model |
+| ResNet_without_BN.py | ResNet model without BN layers |
+| train.py | Basic training structure |
+| train_lr_decay.py | Control experiment for learning rate and l2-decay |
+| train_BN.py | Control experiment for BN layers |
+| visual.py | Example codes for visulization |
+| MNIST_CNN_LeNet5.py | Codes for LeNet5 network |
