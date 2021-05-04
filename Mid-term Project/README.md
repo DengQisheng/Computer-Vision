@@ -13,7 +13,7 @@
 - Code
 
 | File | Description |
-|:-:|:-:|
+|:-|:-|
 | ResNet.py | ResNet model |
 | ResNet_without_BN.py | ResNet model without BN layers |
 | train.py | Basic training structure |
