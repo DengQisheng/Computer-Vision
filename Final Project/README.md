@@ -8,8 +8,7 @@
   - Liu Yuzhe 16307110070
 
 - Model
-  ;- Baidu Pan: https://pan.baidu.com/s/1MuZf_ZwDB2RqQ5eQ56b7iQ Code: errk
-  - Under maintenance
+  - Baidu Pan: N/A Code: N/A
 
 - Code
 
