@@ -8,7 +8,7 @@
   - Liu Yuzhe 16307110070
 
 - Model
-  - Baidu Pan: N/A Code: N/A
+  - Baidu Pan: https://pan.baidu.com/s/1SxQc5FArcKieTg5odqK_Tg Code: z7qw
 
 - Code
 
