@@ -15,7 +15,7 @@
 | File | Description |
 |:-|:-|
 | ResNet.py | ResNet model |
-| train_baseline.py | Baseline model |
-| train_cutout.py | Cutout model |
-| train_mixup.py | Mixup model |
-| train_cutmix.py | Cutmix model |
+| train_baseline.py | Baseline |
+| train_cutout.py | Cutout |
+| train_mixup.py | Mixup |
+| train_cutmix.py | Cutmix |
